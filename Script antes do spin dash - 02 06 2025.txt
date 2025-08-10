@@ -1,0 +1,72 @@
+extends KinematicBody2D
+
+# Constantes
+const GRAVIDADE := 20
+const VELOCIDADE_MAXIMA := 800
+const ACELERACAO := 20
+const DESACELERACAO := 5
+const FORCA_PULO := -750
+
+
+# Variáveis de movimento
+var velocidade := Vector2.ZERO
+var direcao := 0
+var olhando_para_baixo := false
+var spin_dash := 0
+
+
+func _process(delta):
+	# Atualiza a direção com base na entrada do jogador
+	entrada_do_jogador()
+	movimentacao(delta)
+
+
+func entrada_do_jogador():
+	if Input.is_action_pressed("ui_right"):
+		direcao = 1
+	elif Input.is_action_pressed("ui_left"):
+		direcao = -1
+	else:
+		direcao = 0
+		
+	if Input.is_action_pressed("ui_down"):
+		olhando_para_baixo = true
+	else:
+		olhando_para_baixo = false
+	
+	# Verifica se o jogador pressiona o botão de pulo
+	if Input.is_action_just_pressed("pular") and is_on_floor():
+		pular()
+		
+	if is_on_floor():
+		if olhando_para_baixo == true and Input.is_action_just_pressed("pular"):
+			if direcao == 1:
+				spin_dash = 1
+			elif direcao == -1:
+				spin_dash = -1
+			else:
+				spin_dash = 0
+				
+		
+func movimentacao(delta):
+	# Movimento horizontal com aceleração
+	if direcao != 0:
+		velocidade.x += ACELERACAO * direcao
+		# Limita a velocidade máxima
+		velocidade.x = clamp(velocidade.x, -VELOCIDADE_MAXIMA, VELOCIDADE_MAXIMA)
+	else:
+		# Desaceleração gradual quando o jogador solta os controles
+		velocidade.x = lerp(velocidade.x, 0, DESACELERACAO * delta)
+
+	# Aplicar gravidade
+	velocidade.y += GRAVIDADE
+
+	# Move o personagem no mundo
+	velocidade = move_and_slide(velocidade, Vector2.UP)
+	
+	
+
+func pular():
+	# Define a velocidade vertical com a força do pulo
+	velocidade.y = FORCA_PULO
+	

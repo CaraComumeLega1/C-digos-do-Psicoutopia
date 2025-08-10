@@ -1,0 +1,33 @@
+extends KinematicBody2D
+
+onready var det_direita = $raio_direita
+onready var det_esquerda = $raio_esquerda
+onready var det_chao = $raio_chao
+
+onready var textura = $t_rodinhas
+
+var GRAVIDADE := 20
+var VELOCIDADE_MOVIMENTO := 100
+
+var velocidade := Vector2.ZERO
+var direcao = -1
+
+func gravidade():
+	velocidade.y += GRAVIDADE
+	# Move o personagem no mundo
+	velocidade = move_and_slide(velocidade, Vector2.UP)
+	
+func controle_e_movimentacao():
+	# Movimento horizontal
+	velocidade.x = VELOCIDADE_MOVIMENTO * direcao
+	# Verifica se há parede ou beirada
+	if det_direita.is_colliding():
+		direcao = -1 
+		textura.scale.x = 1 
+	if det_esquerda.is_colliding():
+		direcao = 1 
+		textura.scale.x = -1 
+	
+func _physics_process(delta):
+	gravidade()
+	controle_e_movimentacao()

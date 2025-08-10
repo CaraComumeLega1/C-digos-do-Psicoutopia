@@ -1,0 +1,201 @@
+extends KinematicBody2D
+
+# Constantes
+const GRAVIDADE := 20
+const VELOCIDADE_MAXIMA := 800
+const ACELERACAO := 15
+const DESACELERACAO := 3
+const FORCA_PULO := -750
+const SPINDASH_FORCA_MAX := 1200
+const SPINDASH_TEMPO_MAX := 1.0  # tempo máximo de carregamento em segundos
+const SPINDASH_DURACAO_MAX := 1.5  # duração máxima em segundos
+
+# Variáveis de movimento
+var velocidade := Vector2.ZERO
+var direcao := 0
+var olhando_para_baixo := false
+var carregando_spindash := false
+var pulo_duplo := false
+
+#variaveis dos golpes
+var braco = "tras"
+var socando = false
+var soco_anterior = false
+var chute = false
+
+#variaveis do spindash
+var olhando_para_frente := "nada"
+var spin_dash := false
+var spin_dash_direcao := 0
+var tempo_carregando_spindash := 0.0
+var spin_dash_timer := 0.0
+var spin_dash_velocidade := 0.0
+
+#raycasts do jogador
+var raio_chao : RayCast2D
+var raio_frente : RayCast2D
+var raio_traseira : RayCast2D
+
+#variaveis de animação
+var inclinacao := 0.0
+var corpo : Node2D
+var cabeca : Node2D
+var t_braco : Node2D
+var f_braco : Node2D
+var perna : Node2D
+
+var c_angulo = 0
+var arrastando = false
+
+
+func _ready():
+	raio_chao = $raio_chao
+	raio_frente = $raio_frente
+	raio_traseira = $raio_traseira
+	
+	#variaveis de cada parte do corpo
+	corpo = $TP_Corpo
+	cabeca = $TP_Corpo/N_Cabeca
+	t_braco = $TP_Corpo/braco_tras
+	f_braco = $TP_Corpo/braco_frente
+	perna = $TP_Corpo/n_perna_tras
+
+
+func _process(delta):
+	controles_basicos(delta)
+	movimentacao(delta)
+	golpes()
+	animacao()
+
+func controles_basicos(delta):
+	#código para girar a cabeça
+	if Input.is_action_pressed("ui_up"):
+		c_angulo = 1
+	elif Input.is_action_pressed("ui_down"):
+		c_angulo = -1
+	else:
+		c_angulo = 0
+		
+	#Código para virar o personagem
+	if not carregando_spindash:
+		if Input.is_action_pressed("ui_right"):
+			direcao = 1
+			olhando_para_frente = "direita"
+		elif Input.is_action_pressed("ui_left"):
+			direcao = -1
+			olhando_para_frente = "esquerda"
+		else:
+			direcao = 0
+
+	olhando_para_baixo = Input.is_action_pressed("ui_down")
+	
+	if is_on_floor() and olhando_para_baixo and Input.is_action_pressed("pular"):
+		if not carregando_spindash:
+			carregando_spindash = true
+			tempo_carregando_spindash = 0.0
+
+			# Define a direção baseada no olhar
+			if olhando_para_frente == "direita":
+				spin_dash_direcao = 1
+			elif olhando_para_frente == "esquerda":
+				spin_dash_direcao = -1
+			else:
+				spin_dash_direcao = 1
+
+		# Aumenta o tempo de carregamento (limitado)
+		tempo_carregando_spindash = min(tempo_carregando_spindash + delta, SPINDASH_TEMPO_MAX)
+
+	# Quando solta o botão de pulo, ativa o spin dash
+	if carregando_spindash and Input.is_action_just_released("pular"):
+		carregando_spindash = false
+		spin_dash = true
+
+		# Calcula força com base no tempo de carregamento
+		var forca_percentual := tempo_carregando_spindash / SPINDASH_TEMPO_MAX
+		spin_dash_velocidade = lerp(500, SPINDASH_FORCA_MAX, forca_percentual)
+		spin_dash_timer = lerp(0.3, SPINDASH_DURACAO_MAX, forca_percentual)  # Duração proporcional
+
+	if Input.is_action_just_pressed("pular") and is_on_floor() and not carregando_spindash:
+		pular()
+	
+func pular(): #NUNCA APAGUE ESSA PARTE
+	velocidade.y = FORCA_PULO
+
+func movimentacao(delta):
+	#SCRIPT PARA REALIZAR O SPIN DASH
+	if spin_dash:
+		# Aplica movimento constante durante o tempo de spin dash
+		velocidade.x = spin_dash_velocidade * spin_dash_direcao
+		spin_dash_timer -= delta
+		if spin_dash_timer <= 0:
+			spin_dash = false
+	else:
+		if direcao != 0:
+			velocidade.x += ACELERACAO * direcao
+			velocidade.x = clamp(velocidade.x, -VELOCIDADE_MAXIMA, VELOCIDADE_MAXIMA)
+		else:
+			velocidade.x = lerp(velocidade.x, 0, DESACELERACAO * delta)
+			
+	# Gravidade
+	velocidade.y += GRAVIDADE
+
+	# Movimento
+	velocidade = move_and_slide(velocidade, Vector2.UP)
+	
+func animacao():
+		#CÓDIGO PARA VIRAR A CABEÇA
+	if c_angulo == 1:
+		cabeca.rotation_degrees = -30
+	elif c_angulo == -1:
+		cabeca.rotation_degrees = 30
+	else:
+		cabeca.rotation_degrees = 0
+		
+	#código para virar personagem
+	if olhando_para_frente == "direita":
+		corpo.scale.x = 1
+	elif olhando_para_frente == "esquerda":
+		corpo.scale.x = -1
+	
+	if not Input.is_action_pressed("ui_right") or not Input.is_action_pressed("ui_left"):
+		arrastando = true
+	else:
+		arrastando = false
+	
+func golpes():
+	#CÓDIGO PARA REALIZAR A CONDIÇÃO DO SOCO
+	socando = Input.is_action_pressed("socar")
+		
+	if socando and not soco_anterior:
+		# Alterna o braço quando o botão é pressionado
+		if braco == "tras":
+			braco = "frente"
+		else:
+			braco = "tras"
+	
+	soco_anterior = socando
+	
+	#CÓDIGO PARA FAZER O PERSONAGEM SOCAR
+	if socando:
+		if braco == "tras":
+			t_braco.rotation_degrees = -100
+			f_braco.rotation_degrees = 0
+		else:
+			f_braco.rotation_degrees = -100
+			t_braco.rotation_degrees = 0
+	else:
+		# Resetar os dois braços quando não está socando
+		t_braco.rotation_degrees = 0
+		f_braco.rotation_degrees = 0
+	
+	#CÓDIGO PARA REALIZAR A CONDIÇÃO DO CHUTe
+	if Input.is_action_pressed("chutar"):
+		chute = true
+	else:
+		chute = false
+	#CÓDIGO PARA CHUTAR
+	if chute == true:
+		perna.rotation_degrees = -100
+	else:
+		perna.rotation_degrees = 0
+	pass

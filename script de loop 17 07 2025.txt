@@ -1,0 +1,154 @@
+extends Node
+
+onready var colisao_frontal = $loop_da_frente/colisao_2
+onready var area_1 = $loop_da_frente/area_frente
+onready var colisao_trazeira = $loop_de_tras/colisao_1
+onready var frente_camada = $loop_da_frente
+onready var area_2 = $loop_de_tras/area_tras
+onready var area_3 = $ponto_central
+
+var lado_escolhido = 0
+var oposto_ativado = false
+
+#variaveis do loop de trás
+onready var r10_positivo = $loop_de_tras/rampa_10
+onready var colisao_10_p = $loop_de_tras/rampa_10/colisao_10_p
+onready var r25_positivo = $loop_de_tras/rampa_25
+onready var colisao_25_p = $loop_de_tras/rampa_25/colisao_25_p
+onready var r60_positivo = $loop_de_tras/rampa_60
+onready var colisao_60_p = $loop_de_tras/rampa_60/colisao_60_p
+onready var r90_positivo = $loop_de_tras/rampa_90
+onready var colisao_90_p = $loop_de_tras/rampa_90/colisao_90_p
+onready var r125_positivo = $loop_de_tras/rampa_125
+onready var colisao_125_p = $loop_de_tras/rampa_125/colisao_125_p
+onready var r160_positivo = $loop_de_tras/rampa_160_p
+onready var colisao_160_p = $loop_de_tras/rampa_160_p/colisao_160_p
+
+#variaveis do loop da frente
+onready var r10_negativo = $loop_da_frente/rampa_10_n
+onready var colisao_10_n = $loop_da_frente/rampa_10_n/c_10_n
+onready var r25_negativo = $loop_da_frente/rampa_25_n
+onready var colisao_25_n = $loop_da_frente/rampa_25_n/c_25_n
+onready var r60_negativo = $loop_da_frente/rampa_60_n
+onready var colisao_60_n = $loop_da_frente/rampa_60_n/c_60_n
+onready var r90_negativo = $loop_da_frente/rampa_90_n
+onready var colisao_90_n = $loop_da_frente/rampa_90_n/c_90_n
+onready var r125_negativo = $loop_da_frente/rampa_125_n
+onready var colisao_125_n = $loop_da_frente/rampa_125_n/c_125_n
+onready var r160_negativo = $loop_da_frente/rampa_160_n
+onready var colisao_160_n = $loop_da_frente/rampa_160_n/c_160_n
+
+func _ready():
+	area_1.connect("body_entered", self, "entrou_loop_frontal")
+	area_2.connect("body_entered", self, "entrou_loop_atras")
+	area_3.connect("body_entered", self, "entrou_no_centro")
+	area_3.connect("body_exited", self, "saiu_da_area")
+	
+	#variaveis do loop de trás
+	r10_positivo.connect("body_exited", self, "saiu_da_area")
+	r25_positivo.connect("body_exited", self, "saiu_da_area")
+	r60_positivo.connect("body_exited", self, "saiu_da_area")
+	r90_positivo.connect("body_exited", self, "saiu_da_area")
+	r125_positivo.connect("body_exited", self, "saiu_da_area")
+	r160_positivo.connect("body_exited", self, "saiu_da_area")
+	
+	#loop variaveis da frente
+	r10_negativo.connect("body_exited", self, "saiu_da_area")
+	r25_negativo.connect("body_exited", self, "saiu_da_area")
+	r60_negativo.connect("body_exited", self, "saiu_da_area")
+	r90_negativo.connect("body_exited", self, "saiu_da_area")
+	r125_negativo.connect("body_exited", self, "saiu_da_area")
+	r160_negativo.connect("body_exited", self, "saiu_da_area")
+		
+func _process(delta):
+	modificar_colisao()
+	
+func entrou_loop_frontal(body):
+	if body.is_in_group("jogador"):
+		lado_escolhido = 1
+		oposto_ativado = false
+		
+func entrou_loop_atras(body):
+	if body.is_in_group("jogador"):
+		lado_escolhido = 2
+		oposto_ativado = false
+		
+func entrou_no_centro(body):
+	if body.is_in_group("jogador"):
+		oposto_ativado = true
+		if oposto_ativado == true:
+			if lado_escolhido == 1:
+				lado_escolhido = 2
+			elif lado_escolhido == 2:
+				lado_escolhido = 1
+		
+func modificar_colisao():
+	if lado_escolhido == 1:
+		#variaveis do loop de trás
+		colisao_trazeira.disabled = true
+		colisao_10_p.disabled = true
+		colisao_25_p.disabled = true
+		colisao_60_p.disabled = true
+		colisao_90_p.disabled = true
+		colisao_125_p.disabled = true
+		colisao_160_p.disabled = true
+		
+		#variaveis do loop da frente
+		frente_camada.z_index = 0
+		colisao_frontal.disabled = false
+		colisao_10_n.disabled = false
+		colisao_25_n.disabled = false
+		colisao_60_n.disabled = false
+		colisao_90_n.disabled = false
+		colisao_125_n.disabled = false
+		colisao_160_n.disabled = false
+		
+	if lado_escolhido == 2:
+		#variaveis do loop de trás
+		colisao_trazeira.disabled = false
+		colisao_10_p.disabled = false
+		colisao_25_p.disabled = false
+		colisao_60_p.disabled = false
+		colisao_90_p.disabled = false
+		colisao_125_p.disabled = false
+		colisao_160_p.disabled = false
+		
+		#variaveis do loop da frente
+		frente_camada.z_index = 1
+		colisao_frontal.disabled = true
+		colisao_10_n.disabled = true
+		colisao_25_n.disabled = true
+		colisao_60_n.disabled = true
+		colisao_90_n.disabled = true
+		colisao_125_n.disabled = true
+		colisao_160_n.disabled = true
+		
+func saiu_da_area(body):
+	if body.is_in_group("obj_inclinavel"):
+		body.resetar_inclinacao()
+		
+func _physics_process(delta):
+	verificar_corpos_na_area(area_3, "inclinar_180")
+	
+	#variaveis de tras
+	verificar_corpos_na_area(r10_positivo, "inclinar_10")
+	verificar_corpos_na_area(r25_positivo, "inclinar_25")
+	verificar_corpos_na_area(r60_positivo, "inclinar_60")
+	verificar_corpos_na_area(r90_positivo, "inclinar_90")
+	verificar_corpos_na_area(r125_positivo, "inclinar_125")
+	verificar_corpos_na_area(r160_positivo, "inclinar_160")
+	
+	#variaveis da frente
+	verificar_corpos_na_area(r10_negativo, "inclinar_10_n")
+	verificar_corpos_na_area(r25_negativo, "inclinar_25_n")
+	verificar_corpos_na_area(r60_negativo, "inclinar_60_n")
+	verificar_corpos_na_area(r90_negativo, "inclinar_90_n")
+	verificar_corpos_na_area(r125_negativo, "inclinar_125_n")
+	verificar_corpos_na_area(r160_negativo, "inclinar_160_n")
+
+func verificar_corpos_na_area(area, metodo_nome):
+	for corpo in area.get_overlapping_bodies():
+		if corpo.is_in_group("obj_inclinavel") and corpo.has_method(metodo_nome):
+			corpo.call(metodo_nome)
+			
+			

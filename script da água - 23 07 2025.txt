@@ -1,0 +1,17 @@
+extends KinematicBody2D
+
+onready var area_aquatica = $area_2d_aquatica
+
+func _physics_process(delta):
+	verificar_corpos_na_area(area_aquatica, "debaixo_dagua")
+	area_aquatica.connect("body_exited", self, "_on_body_exited")
+	
+func _on_body_exited(corpo):
+	if corpo.is_in_group("obj_nadavel") and corpo.has_method("fora_dagua"):
+		corpo.call("fora_dagua")
+	
+func verificar_corpos_na_area(area, metodo_nome):
+	for corpo in area.get_overlapping_bodies():
+		if corpo.is_in_group("obj_nadavel") and corpo.has_method(metodo_nome):
+			corpo.call(metodo_nome)
+

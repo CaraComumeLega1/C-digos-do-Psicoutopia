@@ -1,0 +1,190 @@
+extends Node
+
+onready var colisao_frontal = $loop_da_frente/colisao_2
+onready var area_1 = $loop_da_frente/area_frente
+onready var colisao_trazeira = $loop_de_tras/colisao_1
+onready var frente_camada = $loop_da_frente
+onready var area_2 = $loop_de_tras/area_tras
+onready var area_3 = $ponto_central
+onready var el_camino = $caminho_2d
+onready var linha = $caminho_2d/linha_2d
+
+var lado_inicial = 0
+var lado_escolhido = 0
+var oposto_ativado = false
+var piroca = false
+var velocidade = Vector2.ZERO
+
+#variaveis do loop de trás
+onready var r10_positivo = $loop_de_tras/rampa_10
+onready var colisao_10_p = $loop_de_tras/rampa_10/colisao_10_p
+onready var r25_positivo = $loop_de_tras/rampa_25
+onready var colisao_25_p = $loop_de_tras/rampa_25/colisao_25_p
+onready var r60_positivo = $loop_de_tras/rampa_60
+onready var colisao_60_p = $loop_de_tras/rampa_60/colisao_60_p
+onready var r90_positivo = $loop_de_tras/rampa_90
+onready var colisao_90_p = $loop_de_tras/rampa_90/colisao_90_p
+
+#variaveis do loop da frente
+onready var r10_negativo = $loop_da_frente/rampa_10_n
+onready var colisao_10_n = $loop_da_frente/rampa_10_n/c_10_n
+onready var r25_negativo = $loop_da_frente/rampa_25_n
+onready var colisao_25_n = $loop_da_frente/rampa_25_n/c_25_n
+onready var r60_negativo = $loop_da_frente/rampa_60_n
+onready var colisao_60_n = $loop_da_frente/rampa_60_n/c_60_n
+onready var r90_negativo = $loop_da_frente/rampa_90_n
+onready var colisao_90_n = $loop_da_frente/rampa_90_n/c_90_n
+
+
+func _ready():
+	area_1.connect("body_entered", self, "entrou_loop_frontal")
+	area_2.connect("body_entered", self, "entrou_loop_atras")
+	area_3.connect("body_entered", self, "entrou_no_centro")
+	area_3.connect("body_exited", self, "saiu_da_area")
+	r90_positivo.connect("body_entered", self, "lado_esquerdo_90")
+	r90_negativo.connect("body_entered", self, "lado_direito_90")
+	
+	#variaveis do loop de trás
+	r10_positivo.connect("body_exited", self, "saiu_da_area")
+	r25_positivo.connect("body_exited", self, "saiu_da_area")
+	r60_positivo.connect("body_exited", self, "saiu_da_area")
+	
+	#loop variaveis da frente
+	r10_negativo.connect("body_exited", self, "saiu_da_area")
+	r25_negativo.connect("body_exited", self, "saiu_da_area")
+	r60_negativo.connect("body_exited", self, "saiu_da_area")
+	
+func saiu_da_area(body):
+	if body.is_in_group("obj_inclinavel"):
+		body.resetar_inclinacao()
+	
+func _physics_process(delta):
+	fudeu_de_vez()
+	modificar_colisao()
+	#variaveis de tras
+	verificar_corpos_na_area(r10_positivo, "inclinar_10")
+	verificar_corpos_na_area(r25_positivo, "inclinar_25")
+	verificar_corpos_na_area(r60_positivo, "inclinar_60")
+	#variaveis da frente
+	verificar_corpos_na_area(r10_negativo, "inclinar_10_n")
+	verificar_corpos_na_area(r25_negativo, "inclinar_25_n")
+	verificar_corpos_na_area(r60_negativo, "inclinar_60_n")
+	#fddfdhdhh
+	
+func verificar_corpos_na_area(area, metodo_nome):
+	for corpo in area.get_overlapping_bodies():
+		if corpo.is_in_group("obj_inclinavel") and corpo.has_method(metodo_nome):
+			corpo.call(metodo_nome)
+				
+				
+func entrou_loop_frontal(body):
+	if body.is_in_group("jogador"):
+		lado_escolhido = 1
+		lado_inicial = 0
+		oposto_ativado = false
+		
+func entrou_loop_atras(body):
+	if body.is_in_group("jogador"):
+		lado_escolhido = -1
+		lado_inicial = 0
+		oposto_ativado = false
+		
+func lado_esquerdo_90(body):
+	if body.is_in_group("jogador"):
+		if variavel_global.spin_dash == true:
+			variavel_global.loop_spin_ball = true
+		variavel_global.fazer_loop = true
+		lado_inicial = -1
+		linha.offset = 320.93
+	
+func lado_direito_90(body):
+	if body.is_in_group("jogador"):
+		if variavel_global.spin_dash == true:
+			variavel_global.loop_spin_ball = true
+		variavel_global.fazer_loop = true
+		lado_inicial = 1
+		linha.offset = 0
+			
+func entrou_no_centro(body):
+	if body.is_in_group("jogador"):
+		if variavel_global.fazer_loop == true:
+			oposto_ativado = true
+			if oposto_ativado == true:
+				if lado_escolhido == 1:
+					lado_escolhido = -1
+				elif lado_escolhido == -1:
+					lado_escolhido = 1
+					
+func modificar_colisao():
+	if lado_escolhido == 1:
+		#variaveis do loop de trás
+		colisao_trazeira.disabled = true
+		colisao_10_p.disabled = true
+		colisao_25_p.disabled = true
+		colisao_60_p.disabled = true
+		colisao_90_p.disabled = true
+		
+		#variaveis do loop da frente
+		frente_camada.z_index = 0
+		colisao_frontal.disabled = false
+		colisao_10_n.disabled = false
+		colisao_25_n.disabled = false
+		colisao_60_n.disabled = false
+		colisao_90_n.disabled = false
+		
+	if lado_escolhido == -1:
+		#variaveis do loop de trás
+		colisao_trazeira.disabled = false
+		colisao_10_p.disabled = false
+		colisao_25_p.disabled = false
+		colisao_60_p.disabled = false
+		colisao_90_p.disabled = false
+		
+		#variaveis do loop da frente
+		frente_camada.z_index = 1
+		colisao_frontal.disabled = true
+		colisao_10_n.disabled = true
+		colisao_25_n.disabled = true
+		colisao_60_n.disabled = true
+		colisao_90_n.disabled = true
+		
+func fudeu_de_vez():
+	if variavel_global.fazer_loop == true:
+		variavel_global.spin_dash = false
+		variavel_global.m_jogador.global_position = linha.global_position
+		variavel_global.m_jogador.rotation_degrees = linha.rotation_degrees
+		
+		if linha.offset > 320.93:
+			linha.offset = 320.93
+			
+		if linha.offset < 0:
+			linha.offset = 0
+			
+		if variavel_global.loop_spin_ball == true:
+			if variavel_global.j_frente == 1 and lado_inicial == 1:
+				linha.offset += 20
+			if variavel_global.j_frente == -1 and lado_inicial == -1:
+				linha.offset -= 20
+		else:
+			#faz ele girar até o lado esquerdo
+			if variavel_global.j_direcao == 1 and lado_inicial == 1:
+				linha.offset += 10
+			#faz ele girar até o lado direito
+			if variavel_global.j_direcao == -1 and lado_inicial == -1:
+				linha.offset -= 10
+				
+			if variavel_global.j_direcao == 0 and not variavel_global.loop_spin_ball == true:
+				variavel_global.fazer_loop = false
+		#se o jogaodr tentar andar no sentido posto em que ele começou a fazer o loop
+		if variavel_global.j_frente == 1 and lado_inicial == -1:
+			variavel_global.fazer_loop = false
+			variavel_global.m_jogador.rotation_degrees = 0
+						
+		if variavel_global.j_frente == -1 and lado_inicial == 1:
+			variavel_global.fazer_loop = false
+			variavel_global.m_jogador.rotation_degrees = 0
+			
+	else:
+		if variavel_global.loop_spin_ball == true:
+			variavel_global.spin_dash = true
+			variavel_global.loop_spin_ball = false

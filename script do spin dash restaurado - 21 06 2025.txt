@@ -1,0 +1,153 @@
+extends KinematicBody2D
+
+# Constantes
+const GRAVIDADE := 20
+const VELOCIDADE_MAXIMA := 800
+const ACELERACAO := 15
+const DESACELERACAO := 3
+const SPINDASH_FORCA := 1000
+const SPINDASH_DURACAO := 1.0
+
+# Balas
+export (PackedScene) var projetil_1
+
+# Raycasts do jogador
+onready var posicao_curto_calibre = $TP_Corpo/n_braco_armado/p_curto_calibre
+onready var posicao_fuzil_escopeta = $TP_Corpo/n_braco_armado/p_fuzil
+
+# Variáveis de movimento
+var velocidade := Vector2.ZERO
+var direcao := 0
+var andando := false
+
+# Variáveis do Spin Dash
+var spin_dash_direcao := 0
+var spin_dash_timer := 0.0
+
+# Variáveis de áudio
+var spin_a1 = false
+var spin_a2 = false
+
+func _ready():
+	variavel_global.m_jogador = self
+	variavel_global.som_do_anel1 = $audio_jogador/a_anel1
+
+func _physics_process(delta):
+	movimentacao(delta)
+
+func _process(delta):
+	controles_basicos(delta)
+	golpes()
+
+func controles_basicos(delta):
+	# Cabeça
+	if Input.is_action_pressed("ui_up"):
+		variavel_global.c_angulo = 1
+	elif Input.is_action_pressed("ui_down"):
+		variavel_global.c_angulo = -1
+	else:
+		variavel_global.c_angulo = 0
+
+	# Soco
+	variavel_global.soco_anterior = variavel_global.socando
+	variavel_global.socando = Input.is_action_just_pressed("socar")
+
+	# Chute (ainda vazio)
+	if Input.is_action_just_pressed("chutar"):
+		pass
+
+	# Pegar
+	variavel_global.pegar_segurar = Input.is_action_pressed("pegar_agarrar")
+
+	# Direção
+	if not variavel_global.carregando_spindash:
+		if Input.is_action_pressed("ui_right"):
+			direcao = 1
+			andando = true
+			variavel_global.olhando_para_frente = 1
+		elif Input.is_action_pressed("ui_left"):
+			direcao = -1
+			andando = true
+			variavel_global.olhando_para_frente = -1
+		else:
+			andando = false
+			direcao = 0
+
+	# Iniciar Spin Dash (olhando pra baixo + segurando pulo)
+	if is_on_floor() and variavel_global.c_angulo == -1 and Input.is_action_pressed("pular"):
+		if not variavel_global.carregando_spindash and not variavel_global.spin_dash:
+			variavel_global.carregando_spindash = true
+			if variavel_global.olhando_para_frente != 0:
+				spin_dash_direcao = variavel_global.olhando_para_frente
+			else:
+				spin_dash_direcao = 1
+
+	# Solta botão de pulo → ativa Spin Dash
+	if variavel_global.carregando_spindash and Input.is_action_just_released("pular"):
+		variavel_global.carregando_spindash = false
+		variavel_global.spin_dash = true
+		spin_dash_timer = SPINDASH_DURACAO
+		spin_dash_direcao = variavel_global.olhando_para_frente
+
+	# Pular normalmente
+	if Input.is_action_just_pressed("pular") and is_on_floor():
+		if not variavel_global.carregando_spindash:
+			pular()
+
+	# Pulando
+	variavel_global.pulando = velocidade.y < 0 and Input.is_action_pressed("pular")
+
+	if is_on_floor() and not variavel_global.carregando_spindash:
+		variavel_global.pulando = false
+		variavel_global.saltitando = false
+
+	# Seleção de armas
+	variavel_global.sa_proxima = Input.is_action_just_pressed("proxima_arma")
+	variavel_global.sa_anterior = Input.is_action_just_pressed("arma_anterior")
+
+func pular():
+	velocidade.y = variavel_global.FORCA_PULO
+	$audio_jogador/j_pulo.play()
+
+func trampolim():
+	velocidade.y = variavel_global.FORCA_PULO_TRAMPOLIM
+	variavel_global.a1_trampolim = true
+	variavel_global.saltitando = true
+
+func movimentacao(delta):
+	# Spin Dash
+	if variavel_global.spin_dash:
+		velocidade.x = SPINDASH_FORCA * spin_dash_direcao
+		spin_dash_timer -= delta
+		if spin_dash_timer <= 0:
+			variavel_global.spin_dash = false
+	else:
+		if direcao != 0:
+			velocidade.x += ACELERACAO * direcao
+			velocidade.x = clamp(velocidade.x, -VELOCIDADE_MAXIMA, VELOCIDADE_MAXIMA)
+		else:
+			velocidade.x = lerp(velocidade.x, 0, DESACELERACAO * delta)
+
+	# Gravidade
+	velocidade.y += GRAVIDADE
+
+	# Movimento
+	velocidade = move_and_slide(velocidade, Vector2.UP)
+
+func golpes():
+	if variavel_global.socando:
+		if not variavel_global.spin_dash:
+			if variavel_global.lote_selecionado == 1 and variavel_global.pistola_tipo == 2:
+				var bala_1 = projetil_1.instance()
+				get_parent().add_child(bala_1)
+				bala_1.global_position = posicao_curto_calibre.global_position
+			if variavel_global.lote_selecionado == 3 and variavel_global.rifle_tipo == 2:
+				var bala_1 = projetil_1.instance()
+				get_parent().add_child(bala_1)
+				bala_1.global_position = posicao_fuzil_escopeta.global_position
+
+func inclinar_corpo():
+	if variavel_global.girar_objeto:
+		self.rotation_degrees = -20
+	else:
+		self.rotation_degrees = 0

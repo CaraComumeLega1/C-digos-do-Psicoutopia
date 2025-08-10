@@ -1,0 +1,47 @@
+extends Node2D
+
+var inclinacao := 0.0
+var cabeca : Node2D
+var braco : Node2D
+var direcao = 0
+var c_angulo = 0
+
+func _ready():
+	# Acessa o nó N_Cabeca quando o nó principal estiver pronto e na árvore
+	cabeca = $N_Cabeca as Node2D
+	braco = $N_Braco as Node2D
+	
+func virar_condicao():
+	if Input.is_action_pressed("ui_right"):
+		direcao = 1
+	elif Input.is_action_pressed("ui_left"):
+		direcao = -1
+	
+func virar_personagem():
+	if direcao == 1:
+		self.scale.x = 1
+	elif direcao == -1:
+		self.scale.x = -1
+		
+func cabecacondicao():
+	if Input.is_action_pressed("ui_up"):
+		c_angulo = 1
+	elif Input.is_action_pressed("ui_down"):
+		c_angulo = -1
+	else:
+		c_angulo = 0
+		
+func cabecagira():
+	if c_angulo == 1:
+		cabeca.rotation_degrees = -30
+	elif c_angulo == -1:
+		cabeca.rotation_degrees = 30
+	else:
+		cabeca.rotation_degrees = 0
+		
+		
+func _process(delta):
+	virar_condicao()
+	virar_personagem()
+	cabecacondicao()
+	cabecagira()
