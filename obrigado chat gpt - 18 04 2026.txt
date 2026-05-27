@@ -1,0 +1,119 @@
+extends KinematicBody
+
+# Constantes
+var gravidade = 30
+var velocidade_maxima = 1200
+var aceleracao = 20
+var desaceleracao = 1.5
+var spindash_forca = 1400
+var dir_x = 0
+var dir_z = 0
+
+onready var propria_colisao = $j_colisao
+onready var corpo = $corpo
+var camera
+
+# raycasts
+onready var raio_chao = $raio_chao
+
+# Movimento
+var velocidade = Vector3.ZERO
+
+var caiu_do_chao = false
+
+
+func _ready():
+	camera = variavel_global.camera_jogador
+	variavel_global.m_jogador = self
+	variavel_global.som_do_anel1 = $audio_jogador/a_anel1
+
+func controles_basicos(delta):
+		# Pulo normal
+	if Input.is_action_just_pressed("pular") and raio_chao.is_colliding() and not variavel_global.carregando_spindash:
+		velocidade.y = variavel_global.FORCA_PULO * delta
+		$audio_jogador/j_pulo.play()
+
+	# Pulando
+	variavel_global.pulando = velocidade.y < 0 and Input.is_action_pressed("pular")
+
+	if raio_chao.is_colliding() and not variavel_global.carregando_spindash:
+		variavel_global.pulando = false
+		variavel_global.saltitando = false
+	
+	
+	# INPUT DIRECIONAL BASEADO NA CÂMERA
+	var input_dir = Vector2.ZERO
+
+	if Input.is_action_pressed("ui_left"):
+		input_dir.x -= 1
+	if Input.is_action_pressed("ui_right"):
+		input_dir.x += 1
+	if Input.is_action_pressed("ui_up"):
+		input_dir.y += 1
+	if Input.is_action_pressed("ui_down"):
+		input_dir.y -= 1
+
+	input_dir = input_dir.normalized()
+
+	# converter para mundo usando a câmera
+	var cam = variavel_global.camera_jogador
+
+	if cam:
+		var frente = -cam.global_transform.basis.z
+		var direita = cam.global_transform.basis.x
+		
+		frente.y = 0
+		direita.y = 0
+		
+		frente = frente.normalized()
+		direita = direita.normalized()
+		
+		var dir3d = (frente * input_dir.y) + (direita * input_dir.x)
+		
+		dir_x = dir3d.x
+		dir_z = dir3d.z
+	else:
+		dir_x = 0
+		dir_z = 0
+			
+	
+func funcionalidade_corpo():
+	pass
+	
+func movimentacao(delta):
+
+	var direcao = Vector3(dir_x, 0, dir_z)
+
+	if direcao.length() > 0:
+		direcao = direcao.normalized()
+		
+		velocidade.x += direcao.x * aceleracao * delta
+		velocidade.z += direcao.z * aceleracao * delta
+		
+		# limitar velocidade
+		var horizontal = Vector2(velocidade.x, velocidade.z)
+		if horizontal.length() > velocidade_maxima:
+			horizontal = horizontal.normalized() * velocidade_maxima
+			velocidade.x = horizontal.x
+			velocidade.z = horizontal.y
+	else:
+		velocidade.x = lerp(velocidade.x, 0, desaceleracao * delta)
+		velocidade.z = lerp(velocidade.z, 0, desaceleracao * delta)
+
+	# Gravidade
+	velocidade.y -= gravidade * delta
+
+	# Movimento
+	velocidade = move_and_slide(velocidade, Vector3.UP)
+
+	# Detecta se saiu do chão
+	if not raio_chao.is_colliding():
+		caiu_do_chao = true
+			
+	
+func _physics_process(delta):
+	movimentacao(delta)
+
+func _process(delta):
+	controles_basicos(delta)
+	funcionalidade_corpo()

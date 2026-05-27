@@ -1,0 +1,99 @@
+extends KinematicBody
+
+# Constantes
+var gravidade = 30
+var velocidade_maxima = 1200
+var aceleracao = 20
+var desaceleracao = 1.5
+var spindash_forca = 1400
+var dir_x = 0
+var dir_z = 0
+
+onready var propria_colisao = $j_colisao
+onready var corpo = $corpo
+var camera
+
+# raycasts
+onready var raio_chao = $raio_chao
+
+# Movimento
+var velocidade = Vector3.ZERO
+
+var caiu_do_chao = false
+
+
+func _ready():
+	camera = variavel_global.camera_jogador
+	variavel_global.m_jogador = self
+	variavel_global.som_do_anel1 = $audio_jogador/a_anel1
+
+func controles_basicos(delta):
+		# Pulo normal
+	if Input.is_action_just_pressed("pular") and raio_chao.is_colliding() and not variavel_global.carregando_spindash:
+		velocidade.y = variavel_global.FORCA_PULO * delta
+		$audio_jogador/j_pulo.play()
+
+	# Pulando
+	variavel_global.pulando = velocidade.y < 0 and Input.is_action_pressed("pular")
+
+	if raio_chao.is_colliding() and not variavel_global.carregando_spindash:
+		variavel_global.pulando = false
+		variavel_global.saltitando = false
+	
+	
+	if Input.is_action_pressed("ui_left"):
+		dir_x = -1
+	elif Input.is_action_pressed("ui_right"):
+		dir_x = 1
+	else:
+		dir_x = 0
+		
+	if Input.is_action_pressed("ui_up"):
+		dir_z = -1
+	elif Input.is_action_pressed("ui_down"):
+		dir_z = 1
+	else:
+		dir_z = 0
+		
+	
+func funcionalidade_corpo():
+	var direcao = Vector3(velocidade.x, 0, velocidade.z)
+	
+	if direcao.length() > 0.1:
+		corpo.look_at(global_transform.origin + direcao * 4, Vector3.UP)
+	
+func movimentacao(delta):
+	
+	if dir_z > 0:
+		velocidade.z += aceleracao * delta
+	elif dir_z < 0:
+		velocidade.z -= aceleracao * delta
+	else:
+		velocidade.z = lerp(velocidade.z, 0, desaceleracao * delta)
+		
+	if dir_x < 0:
+		velocidade.x -= aceleracao * delta
+	elif dir_x > 0:
+		velocidade.x += aceleracao * delta
+	else:
+		velocidade.x = lerp(velocidade.x, 0, desaceleracao * delta)
+		
+	
+	# Gravidade
+	velocidade.y -= gravidade * delta
+	
+	# Movimento
+	velocidade = move_and_slide(velocidade, Vector3.UP)
+	
+	# Detecta se saiu do chão
+	if not raio_chao.is_colliding():
+		caiu_do_chao = true
+		
+			
+	
+func _physics_process(delta):
+	movimentacao(delta)
+
+func _process(delta):
+	controles_basicos(delta)
+	funcionalidade_corpo()

@@ -1,0 +1,216 @@
+extends Node2D
+
+
+var lado_do_loop = 1
+var lado_inicial = 0
+var temporal = 0
+onready var sinalizador_cent = $modificadores/si_central
+onready var linha_2d = $caminho_2d
+onready var caminhante_2d = $caminho_2d/assento_2d
+var iniciar_caminhada = false
+
+#variaveis do lado direito
+onready var colisao_direita = $parte_direita/colisao_1
+onready var entrada_desativada_di = $modificadores/ed_direita1
+onready var sinalizador_di = $modificadores/si_direito
+onready var area_2_3_negativo = $parte_direita/area_2_3n
+onready var area_9_negativo = $parte_direita/area_9n
+onready var area_14_negativo = $parte_direita/area_14n
+onready var area_25_negativo = $parte_direita/area_25n
+onready var area_40_negativo = $parte_direita/area_40n
+onready var area_52_negativo = $parte_direita/area_52n
+onready var area_64_negativo = $parte_direita/area_64n
+onready var area_79_negativo = $parte_direita/area_79n
+
+#variaveis do lado esquerdo
+onready var colisao_esquerda = $parte_esquerda/colisao_2
+onready var entrada_desativada_3s = $modificadores/ed_esquerda
+onready var sinalizador_3s = $modificadores/si_esquerdo
+onready var area_3_7_positivo = $parte_esquerda/area_3_7p
+onready var area_9_positivo = $parte_esquerda/area_9p
+onready var area_13_5_positivo = $parte_esquerda/area_13_5p
+onready var area_18_positivo = $parte_esquerda/area_18p
+onready var area_29_positivo = $parte_esquerda/area_29p
+onready var area_40_positivo = $parte_esquerda/area_40p
+onready var area_50_positivo = $parte_esquerda/area_50p
+onready var area_60_positivo = $parte_esquerda/area_60p
+onready var area_70_positivo = $parte_esquerda/area_70p
+onready var area_80_positivo = $parte_esquerda/area_80p
+
+var area_das_rampas = {}
+
+func _ready():
+	caminhante_2d.loop = false
+	sinalizador_di.connect("body_entered", self, "sinalizacao_direita")
+	sinalizador_3s.connect("body_entered", self, "sinzalizacao_esquerda")
+	sinalizador_cent.connect("body_entered", self, "sinalizacao_central")
+	
+	area_das_rampas = {
+		#área direita
+		area_2_3_negativo: -2.3,
+		area_9_negativo: -38,
+		area_14_negativo: -14,
+		area_25_negativo: -25,
+		area_40_negativo: -40,
+		area_52_negativo: -52,
+		area_64_negativo: -64,
+		area_79_negativo: -79,
+		#area esquerda
+		area_3_7_positivo: 3.7,
+		area_9_positivo: 9,
+		area_18_positivo: 18,
+		area_29_positivo: 29,
+		area_40_positivo: 40,
+		area_50_positivo: 50,
+		area_60_positivo: 60,
+		area_70_positivo: 70,
+		area_80_positivo: 80
+	}
+	
+	for area in area_das_rampas.keys():
+		area.connect("body_exited", self, "_on_area2d_body_exited", [area])
+
+func sinalizacao_central(body):
+	if body.is_in_group("obj_inclinavel"):
+		if lado_inicial == -1:
+			lado_do_loop = -1
+		if lado_inicial == 1:
+			lado_do_loop = 1
+	
+func sinalizar_para_colisao():
+	for body in entrada_desativada_di.get_overlapping_bodies():
+		if body.is_in_group("obj_inclinavel"):
+			lado_do_loop = 1
+			
+	for body in entrada_desativada_3s.get_overlapping_bodies():
+		if body.is_in_group("obj_inclinavel"):
+			lado_do_loop = -1
+			
+func sinalizacao_direita(body):
+	if body.is_in_group("obj_inclinavel"):
+		variavel_global.fazer_loop = true
+		iniciar_caminhada = true
+		lado_inicial = 1
+		caminhante_2d.unit_offset = 1
+		if variavel_global.loop_spin_ball == true and lado_inicial == -1:
+			variavel_global.loop_spin_ball = false
+	
+func sinzalizacao_esquerda(body):
+	if body.is_in_group("obj_inclinavel"):
+		variavel_global.fazer_loop = true
+		iniciar_caminhada = true
+		lado_inicial = -1
+		caminhante_2d.unit_offset = 0
+		if variavel_global.loop_spin_ball == true and lado_inicial == 1:
+			variavel_global.loop_spin_ball = false
+			
+			
+func trocar_de_colisao():
+	if lado_do_loop == 1:
+		#variaveis do lado direito
+		colisao_direita.disabled = true
+		sinalizador_di.monitoring = false
+		area_2_3_negativo.monitoring = false
+		area_9_negativo.monitoring = false
+		area_14_negativo.monitoring = false
+		area_25_negativo.monitoring = false
+		area_40_negativo.monitoring = false
+		area_52_negativo.monitoring = false
+		area_64_negativo.monitoring = false
+		area_79_negativo.monitoring = false
+		
+		#variaveis do lado esquerdo
+		colisao_esquerda.disabled = false
+		sinalizador_3s.monitoring = true
+		area_3_7_positivo.monitoring = true
+		area_9_positivo.monitoring = true
+		area_13_5_positivo.monitoring = true
+		area_18_positivo.monitoring = true
+		area_29_positivo.monitoring = true
+		area_40_positivo.monitoring = true
+		area_50_positivo.monitoring = true
+		area_60_positivo.monitoring = true
+		area_70_positivo.monitoring = true
+		area_80_positivo.monitoring = true
+		
+	if lado_do_loop == -1:
+		#variaveis do lado direito
+		colisao_direita.disabled = false
+		sinalizador_di.monitoring = true
+		area_2_3_negativo.monitoring = true
+		area_9_negativo.monitoring = true
+		area_14_negativo.monitoring = true
+		area_25_negativo.monitoring = true
+		area_40_negativo.monitoring = true
+		area_52_negativo.monitoring = true
+		area_64_negativo.monitoring = true
+		area_79_negativo.monitoring = true
+		
+		#variaveis do lado esquerdo
+		colisao_esquerda.disabled = true
+		sinalizador_3s.monitoring = false
+		area_3_7_positivo.monitoring = false
+		area_9_positivo.monitoring = false
+		area_13_5_positivo.monitoring = false
+		area_18_positivo.monitoring = false
+		area_29_positivo.monitoring = false
+		area_40_positivo.monitoring = false
+		area_50_positivo.monitoring = false
+		area_60_positivo.monitoring = false
+		area_70_positivo.monitoring = false
+		area_80_positivo.monitoring = false
+
+		
+func _physics_process(delta):
+	sinalizar_para_colisao()
+	trocar_de_colisao()
+	mover_se_em_forma_de_loop()
+	for area in area_das_rampas.keys():
+		aplicar_inclinacao(area, area_das_rampas[area])
+
+func aplicar_inclinacao(area, inclinacao):
+	for corpo in area.get_overlapping_bodies():
+		if corpo.is_in_group("obj_inclinavel"):
+			corpo.rotation_degrees = inclinacao
+
+func _on_area2d_body_exited(body, area):
+	if body.is_in_group("obj_inclinavel"):
+		body.rotation_degrees = 0
+			
+func mover_se_em_forma_de_loop():
+	if variavel_global.m_jogador:
+		if iniciar_caminhada == true:
+			variavel_global.m_jogador.global_position = caminhante_2d.global_position
+			variavel_global.m_jogador.rotation_degrees = caminhante_2d.rotation_degrees
+			
+			if variavel_global.spin_dash == true:
+				variavel_global.loop_spin_ball = true
+			
+			variavel_global.spin_dash = false
+			
+			if not variavel_global.loop_spin_ball == true:
+				if Input.is_action_pressed("ui_right"):
+					caminhante_2d.offset -= 10
+				if Input.is_action_pressed("ui_left"):
+					caminhante_2d.offset += 10
+				if variavel_global.j_direcao == 0:
+					iniciar_caminhada = false
+					variavel_global.m_jogador.rotation_degrees = 0
+					variavel_global.fazer_loop = false
+			else:
+				if variavel_global.j_frente == 1 and lado_inicial == 1:
+					caminhante_2d.offset -= 3
+				if variavel_global.j_frente == -1 and lado_inicial == -1:
+					caminhante_2d.offset += 3
+				
+					
+			if caminhante_2d.unit_offset == 0 and lado_do_loop == 1:
+				iniciar_caminhada = false
+				variavel_global.m_jogador.rotation_degrees = 0
+				variavel_global.fazer_loop = false
+					
+			if caminhante_2d.unit_offset == 1 and lado_do_loop == -1:
+				iniciar_caminhada = false
+				variavel_global.m_jogador.rotation_degrees = 0
+				variavel_global.fazer_loop = false
+				

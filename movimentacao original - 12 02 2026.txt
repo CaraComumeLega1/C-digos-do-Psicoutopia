@@ -1,0 +1,193 @@
+extends KinematicBody
+
+# Constantes
+var GRAVIDADE = 20
+var VELOCIDADE_MAXIMA = 1200
+var ACELERACAO = 16
+var DESACELERACAO = 1.5
+var SPINDASH_FORCA = 1400
+var empurrar_ou_puxar = false
+
+onready var propria_colisao = $JC_Colisao
+
+
+# Balas
+export (PackedScene) var projetil_1
+
+# posições
+onready var posicao_curto_calibre = $TP_Corpo/n_braco_armado/p_curto_calibre
+onready var posicao_fuzil_escopeta = $TP_Corpo/n_braco_armado/p_fuzil
+
+# raycasts
+onready var raio_chao = $raio_chao
+
+# Movimento
+var velocidade := Vector2.ZERO
+var trampolim_horizontal = false
+var tramp_horiz_tempo = 0
+
+# Spin Dash
+var spin_dash_direcao := 0
+var caiu_do_chao := false
+
+var balas_disparadas = 0
+var tempo_pistola = 0
+var tempo_fuzil = 0
+var tempo_escopeta = 0
+var tempo_especial = 0
+var tempo_granada = 0
+
+func _ready():
+	variavel_global.m_jogador = self
+	variavel_global.som_do_anel1 = $audio_jogador/a_anel1
+
+func controles_basicos(delta):
+	# Cabeça
+	if Input.is_action_pressed("ui_up"):
+		variavel_global.c_angulo = 1
+	elif Input.is_action_pressed("ui_down"):
+		variavel_global.c_angulo = -1
+	else:
+		variavel_global.c_angulo = 0
+
+	# Soco
+	variavel_global.soco_anterior = variavel_global.socando
+	variavel_global.socando = Input.is_action_pressed("socar")
+
+	# Pegar
+	if Input.is_action_pressed("pegar_agarrar"):
+		variavel_global.pegar_segurar = true
+	else:
+		variavel_global.pegar_segurar = false
+
+	# Direção (controle de olhar e sentido)
+	if not variavel_global.carregando_spindash:
+		if not variavel_global.spin_dash:
+			if not trampolim_horizontal:
+				if Input.is_action_pressed("ui_right"):
+					variavel_global.j_direcao = 1
+					variavel_global.j_frente = 1
+				elif Input.is_action_pressed("ui_left"):
+					variavel_global.j_direcao = -1
+					variavel_global.j_frente = -1
+				else:
+					variavel_global.j_direcao = 0
+
+	# Início do Spin Dash
+	if raio_chao.is_colliding() and variavel_global.c_angulo == -1 and Input.is_action_pressed("pular"):
+		if not variavel_global.carregando_spindash and not variavel_global.spin_dash:
+			variavel_global.carregando_spindash = true
+
+	if variavel_global.carregando_spindash and Input.is_action_just_released("pular"):
+		variavel_global.carregando_spindash = false
+		variavel_global.spin_dash = true
+		caiu_do_chao = false
+
+	# Pulo normal
+	if Input.is_action_just_pressed("pular") and raio_chao.is_colliding() and not variavel_global.carregando_spindash:
+		velocidade.y = variavel_global.FORCA_PULO
+		trampolim_horizontal = false
+		$audio_jogador/j_pulo.play()
+
+	# Pulando
+	variavel_global.pulando = velocidade.y < 0 and Input.is_action_pressed("pular")
+
+	if raio_chao.is_colliding() and not variavel_global.carregando_spindash:
+		variavel_global.pulando = false
+		variavel_global.saltitando = false
+
+	# Armas
+	variavel_global.sa_proxima = Input.is_action_just_pressed("proxima_arma")
+	variavel_global.sa_anterior = Input.is_action_just_pressed("arma_anterior")
+	
+func movimentacao(delta):
+	# Movimento
+	velocidade = move_and_slide(velocidade, Vector3.UP)
+	# Gravidade
+	if not variavel_global.fazer_loop == true:
+		velocidade.y += GRAVIDADE
+
+	# Detecta se saiu do chão
+	if not raio_chao.is_colliding():
+		caiu_do_chao = true
+		empurrar_ou_puxar = false
+	
+	if variavel_global.spin_dash:
+		if not variavel_global.fazer_loop == true:
+			velocidade.x = SPINDASH_FORCA * variavel_global.j_frente
+		# Cancela se caiu e tocou o chão novamente
+		if caiu_do_chao and raio_chao.is_colliding():
+			variavel_global.spin_dash = false
+	else:
+		velocidade.x = clamp(velocidade.x, -VELOCIDADE_MAXIMA, VELOCIDADE_MAXIMA)
+		if not variavel_global.fazer_loop == true:
+			if not empurrar_ou_puxar == true:
+				if variavel_global.j_direcao > 0:
+					velocidade.x += ACELERACAO
+				elif variavel_global.j_direcao < 0:
+					velocidade.x -= ACELERACAO
+				else:
+					velocidade.x = lerp(velocidade.x, 0, DESACELERACAO * delta)
+			
+	#condição para o trampolim horizontal
+	if trampolim_horizontal == true:
+		tramp_horiz_tempo += 4
+		if variavel_global.j_frente == 1:
+			velocidade.x += 24
+		if variavel_global.j_frente == -1:
+			velocidade.x -= 24
+			
+	if tramp_horiz_tempo > 100:
+		trampolim_horizontal = false
+		tramp_horiz_tempo = 0
+	
+
+func golpes(delta):
+	if variavel_global.socando and not variavel_global.spin_dash:
+		if variavel_global.lote_selecionado == 1:
+			tempo_pistola += 2
+			if variavel_global.pistola_tipo == 2:
+				if not balas_disparadas == 1:
+					balas_disparadas += 1
+					var bala_1 = projetil_1.instance()
+					get_parent().add_child(bala_1)
+					bala_1.global_position = posicao_curto_calibre.global_position
+			if tempo_pistola > 25:
+				tempo_pistola = 0
+				balas_disparadas = 0
+			
+		if variavel_global.lote_selecionado == 1 and variavel_global.pistola_tipo == 4:
+			var bala_1 = projetil_1.instance()
+			get_parent().add_child(bala_1)
+			bala_1.global_position = posicao_curto_calibre.global_position
+			
+		if variavel_global.lote_selecionado == 3 and variavel_global.fuzil_tipo == 2:
+			tempo_fuzil += 2
+			var bala_1 = projetil_1.instance()
+			if not balas_disparadas == 1:
+				balas_disparadas += 1
+				get_parent().add_child(bala_1)
+				bala_1.global_position = posicao_fuzil_escopeta.global_position
+			if tempo_fuzil > 15:
+				balas_disparadas = 0
+				tempo_fuzil = 0
+			
+	
+func debaixo_dagua():
+	GRAVIDADE = 8
+	VELOCIDADE_MAXIMA = 1100
+	ACELERACAO = 10
+	SPINDASH_FORCA = 1200
+		
+func fora_dagua():
+	GRAVIDADE = 20
+	VELOCIDADE_MAXIMA = 1200
+	ACELERACAO = 16
+	SPINDASH_FORCA = 1400
+	
+func _physics_process(delta):
+	movimentacao(delta)
+
+func _process(delta):
+	controles_basicos(delta)
+	golpes(delta)

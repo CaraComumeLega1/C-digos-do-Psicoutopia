@@ -1,0 +1,163 @@
+extends KinematicBody
+
+# Constantes
+var GRAVIDADE = 30
+var VELOCIDADE_MAXIMA = 1200
+var ACELERACAO = 16
+var DESACELERACAO = 1.5
+var des_eixo_z = 5
+var SPINDASH_FORCA = 1400
+var empurrar_ou_puxar = false
+
+onready var propria_colisao = $j_colisao
+
+# raycasts
+onready var raio_chao = $raio_chao
+
+# Movimento
+var velocidade = Vector3.ZERO
+var trampolim_horizontal = false
+var tramp_horiz_tempo = 0
+var de_z = 0
+
+# Spin Dash
+var spin_dash_direcao = 0
+var caiu_do_chao = false
+
+var balas_disparadas = 0
+var tempo_pistola = 0
+var tempo_fuzil = 0
+var tempo_escopeta = 0
+var tempo_especial = 0
+var tempo_granada = 0
+
+func _ready():
+	variavel_global.m_jogador = self
+	variavel_global.som_do_anel1 = $audio_jogador/a_anel1
+
+func controles_basicos(delta):
+	# Cabeça
+	if Input.is_action_pressed("ui_up"):
+		de_z = -1
+	elif Input.is_action_pressed("ui_down"):
+		de_z = 1
+	else:
+		de_z = 0
+
+	# Soco
+	variavel_global.soco_anterior = variavel_global.socando
+	variavel_global.socando = Input.is_action_pressed("socar")
+
+	# Pegar
+	if Input.is_action_pressed("pegar_agarrar"):
+		variavel_global.pegar_segurar = true
+	else:
+		variavel_global.pegar_segurar = false
+
+	# Direção (controle de olhar e sentido)
+	if not variavel_global.carregando_spindash:
+		if not variavel_global.spin_dash:
+			if not trampolim_horizontal:
+				if Input.is_action_pressed("ui_right"):
+					variavel_global.j_direcao = 1
+					variavel_global.j_frente = 1
+				elif Input.is_action_pressed("ui_left"):
+					variavel_global.j_direcao = -1
+					variavel_global.j_frente = -1
+				else:
+					variavel_global.j_direcao = 0
+
+	# Início do Spin Dash
+	if raio_chao.is_colliding() and variavel_global.c_angulo == -1 and Input.is_action_pressed("pular"):
+		if not variavel_global.carregando_spindash and not variavel_global.spin_dash:
+			variavel_global.carregando_spindash = true
+
+	if variavel_global.carregando_spindash and Input.is_action_just_released("pular"):
+		variavel_global.carregando_spindash = false
+		variavel_global.spin_dash = true
+		caiu_do_chao = false
+
+	# Pulo normal
+	if Input.is_action_just_pressed("pular") and raio_chao.is_colliding() and not variavel_global.carregando_spindash:
+		velocidade.y = variavel_global.FORCA_PULO * delta
+		trampolim_horizontal = false
+		$audio_jogador/j_pulo.play()
+
+	# Pulando
+	variavel_global.pulando = velocidade.y < 0 and Input.is_action_pressed("pular")
+
+	if raio_chao.is_colliding() and not variavel_global.carregando_spindash:
+		variavel_global.pulando = false
+		variavel_global.saltitando = false
+
+	# Armas
+	variavel_global.sa_proxima = Input.is_action_just_pressed("proxima_arma")
+	variavel_global.sa_anterior = Input.is_action_just_pressed("arma_anterior")
+	
+func movimentacao(delta):
+	# Movimento
+	velocidade = move_and_slide(velocidade, Vector3.UP)
+	# Gravidade
+	if not variavel_global.fazer_loop == true:
+		velocidade.y -= GRAVIDADE * delta
+
+	# Detecta se saiu do chão
+	if not raio_chao.is_colliding():
+		caiu_do_chao = true
+		empurrar_ou_puxar = false
+	
+	if variavel_global.spin_dash:
+		if not variavel_global.fazer_loop == true:
+			velocidade.x = SPINDASH_FORCA * variavel_global.j_frente * delta
+		# Cancela se caiu e tocou o chão novamente
+		if caiu_do_chao and raio_chao.is_colliding():
+			variavel_global.spin_dash = false
+	else:
+		velocidade.x = clamp(velocidade.x, -VELOCIDADE_MAXIMA, VELOCIDADE_MAXIMA)
+		if not variavel_global.fazer_loop == true:
+			if not empurrar_ou_puxar == true:
+				if variavel_global.j_direcao > 0:
+					velocidade.x += ACELERACAO * delta
+				elif variavel_global.j_direcao < 0:
+					velocidade.x -= ACELERACAO * delta
+				else:
+					velocidade.x = lerp(velocidade.x, 0, DESACELERACAO * delta)
+	
+	if de_z > 0:
+		velocidade.z += ACELERACAO * delta
+	elif de_z < 0:
+		velocidade.z -= ACELERACAO * delta
+	else:
+		velocidade.z = lerp(velocidade.z, 0, des_eixo_z * delta)
+			
+			
+	#condição para o trampolim horizontal
+	if trampolim_horizontal == true:
+		tramp_horiz_tempo += 4
+		if variavel_global.j_frente == 1:
+			velocidade.x += 24 * delta
+		if variavel_global.j_frente == -1:
+			velocidade.x -= 24 * delta
+			
+	if tramp_horiz_tempo > 100:
+		trampolim_horizontal = false
+		tramp_horiz_tempo = 0
+			
+	
+func debaixo_dagua():
+	GRAVIDADE = 8
+	VELOCIDADE_MAXIMA = 1100
+	ACELERACAO = 10
+	SPINDASH_FORCA = 1200
+		
+func fora_dagua():
+	GRAVIDADE = 20
+	VELOCIDADE_MAXIMA = 1200
+	ACELERACAO = 16
+	SPINDASH_FORCA = 1400
+	
+func _physics_process(delta):
+	movimentacao(delta)
+
+func _process(delta):
+	controles_basicos(delta)

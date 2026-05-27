@@ -1,0 +1,40 @@
+extends Camera
+
+var suavidade = 6.0
+var distancia = 10.0
+var altura = 2.0
+var rot_y = 0.0
+var sensibilidade = 0.003
+
+func _ready():
+	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	variavel_global.camera_jogador = self
+
+func _input(event):
+	if event is InputEventMouseMotion:
+		rot_y -= event.relative.x * sensibilidade
+
+func seguir_jogador(delta):
+	if variavel_global.m_jogador:
+		
+		var jogador = variavel_global.m_jogador
+		
+		# direção que o jogador está olhando
+		var jogador_pos = jogador.global_transform.origin
+
+		var offset = Vector3(
+			sin(rot_y) * distancia,
+			altura,
+			cos(rot_y) * distancia)
+
+		var destino = jogador_pos + offset
+		
+		# suavização
+		global_transform.origin = global_transform.origin.linear_interpolate(destino, delta * suavidade)
+		
+		# olhar para o jogador
+		look_at(jogador_pos, Vector3.UP)
+
+func _physics_process(delta):
+	seguir_jogador(delta)
+	

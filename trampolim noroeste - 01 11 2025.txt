@@ -1,0 +1,36 @@
+extends StaticBody2D
+
+onready var trampolim_area = $noroeste_area
+
+var FORCA_PULO_TRAMPOLIM = -1500
+var a1_trampolim = false
+
+
+func _ready():
+	trampolim_area.connect("body_exited", self, "_on_area_body_exited")
+		
+func _on_area_body_exited(body):
+	if body.is_in_group("trampolim_pulavel"):
+		a1_trampolim = false
+		
+func trampolim_audios():
+	if a1_trampolim == true:
+		$trampolim_audio/audio_noroeste.play()
+		
+func efeito_trampolim():
+	for body in trampolim_area.get_overlapping_bodies():
+		if body.is_in_group("trampolim_pulavel"):
+			a1_trampolim = true
+			variavel_global.j_frente = -1
+			variavel_global.forma_de_bola = false
+			variavel_global.spin_dash = false
+			
+			if "velocidade" in body:
+				body.velocidade.y = FORCA_PULO_TRAMPOLIM
+				body.velocidade.x = -3000
+		
+func _process(_delta):
+	trampolim_audios()
+
+func _physics_process(_delta):
+	efeito_trampolim()

@@ -1,0 +1,193 @@
+extends Spatial
+
+var velocidade = Vector3()
+var gravidade = 60
+var tempo_de_espera = 0
+
+var vhorizontal = 10
+var desaceleracao = 8
+var virado = 1
+
+var forca_pulo = 14
+var forca_maxima = 80
+var vetor_pulo = Vector3()
+
+var saltando = false
+onready var raio_c2 = $george_redwoody/raio_chao2 #raycast do chão
+
+onready var basico_camera = $basico_camera
+var aumentar_camera = false
+var diminuir_camera = false
+onready var mouse_3d = $posicao_mouse
+
+var mover_se = false
+var preparar_saltar = false
+var esperar_saltar = 0
+var mirar = false
+
+onready var basico = $george_redwoody
+onready var corpo = $george_redwoody/corpo
+onready var alvaro = $alvo
+onready var alvaro_area = $alvo/Area3d
+
+
+func pegar_posicao_mouse_plano():
+	var mouse_pos = get_viewport().get_mouse_position()
+	
+	var from = basico_camera.project_ray_origin(mouse_pos)
+	var dir = basico_camera.project_ray_normal(mouse_pos)
+	
+	# Plano fixo em Z = 0
+	var distancia = -from.z / dir.z
+	var posicao = from + dir * distancia
+	
+	return posicao
+			
+	
+func camera_condicao():
+	basico_camera.current = true
+	basico_camera.global_translation.y = basico.global_translation.y
+	basico_camera.global_translation.x = basico.global_translation.x
+	
+		
+	if saltando == false:
+		if not preparar_saltar:
+			diminuir_camera = true
+		
+	if diminuir_camera == true:
+		if not basico_camera.fov < 71:
+			basico_camera.fov -= 1
+				
+	#para garantir com que a camera continue ampliando
+	#pois a ideia aqui é fazer a camera ampliar e só voltar
+	#tamanho normal depois que o jogador colidir no chão
+	if aumentar_camera == true:
+		if not basico_camera.fov > 99:
+			basico_camera.fov += 1
+			
+	
+func aparencia_primaria():
+	var pos_mouse = pegar_posicao_mouse_plano()
+	mouse_3d.global_translation.z = basico.global_translation.z
+	mouse_3d.global_translation.y = pos_mouse.y
+	mouse_3d.global_translation.x = pos_mouse.x
+	
+	if not preparar_saltar:
+		if basico.global_translation.x < mouse_3d.global_translation.x:
+			corpo.scale.x = 1
+		if basico.global_translation.x > mouse_3d.global_translation.x:
+			corpo.scale.x = -1
+	
+	
+func movimentacao(delta):
+	var pos_mouse = pegar_posicao_mouse_plano()
+	alvaro.global_translation.y = basico.global_translation.y
+	alvaro.global_translation.z = basico.global_translation.z
+	
+	
+	if Input.is_action_pressed("bm_direito"):
+		alvaro.global_translation.x = pos_mouse.x
+		alvaro_area.monitoring = true
+		if not preparar_saltar:
+			mover_se = true
+		
+	if mover_se == true:
+		alvaro.visible = true
+		tempo_de_espera += 1
+		if tempo_de_espera > 10:
+			if basico.global_translation.x != alvaro.global_translation.x:
+				if basico.global_translation.x < alvaro.global_translation.x:
+					if velocidade.x > 10:
+						velocidade.x -= desaceleracao * delta
+					else:
+						velocidade.x += vhorizontal * delta
+				if basico.global_translation.x > alvaro.global_translation.x:
+					if velocidade.x < -10:
+						velocidade.x += desaceleracao * delta
+					else:
+						velocidade.x -= vhorizontal * delta
+	else:
+		alvaro.visible = false
+		alvaro.global_translation.x = basico.global_translation.x
+		
+		
+	if alvaro_area.monitoring:
+		if not Input.is_action_pressed("bm_direito"):
+			if basico in alvaro_area.get_overlapping_bodies():
+				mover_se = false
+				alvaro_area.monitoring = false
+	
+func para_saltar(delta):
+	raio_c2.enabled = true
+	var pos_mouse = pegar_posicao_mouse_plano()
+	var observacao = basico.global_translation - mouse_3d.global_translation
+	vetor_pulo = observacao.normalized()
+	
+	
+	if not mover_se:
+		if raio_c2.is_colliding():
+			if Input.is_action_pressed("b_pular"):
+				preparar_saltar = true
+				aumentar_camera = true
+				diminuir_camera = false
+			else:
+				if not Input.is_action_pressed("bm_esquerdo"):
+					diminuir_camera = true
+					aumentar_camera = false
+			
+	if preparar_saltar:
+		if Input.is_action_pressed("bm_esquerdo"):
+			mirar = true
+		else:
+			if Input.is_action_just_released("b_pular"):
+				preparar_saltar = false
+				
+			
+	if mirar == true:
+		corpo.rotation.z = atan2(observacao.y, observacao.x)
+	else:
+		corpo.rotation.z = 0
+		
+	if mirar and Input.is_action_just_released("bm_esquerdo"):
+		var distancia = basico.global_translation.distance_to(mouse_3d.global_translation)
+		var forca = clamp(distancia * forca_pulo, 0, forca_maxima)
+	
+		velocidade.x = vetor_pulo.x * forca
+		velocidade.y = vetor_pulo.y * forca
+
+		preparar_saltar = false
+		mirar = false
+		
+		aumentar_camera = true
+		diminuir_camera = false
+		saltando = true
+		
+	if saltando == true:
+		esperar_saltar += 1
+	
+	if esperar_saltar > 10:
+		if saltando == true and raio_c2.is_colliding():
+			saltando = false
+			esperar_saltar = 0
+	
+	
+func aplicando_gravidade(delta):
+	velocidade = basico.move_and_slide(velocidade, Vector3.UP)
+	
+	velocidade.y -= gravidade * delta
+	
+	#depois será adicionado a condição de pulo
+	if not saltando == true:
+		if mover_se == false:
+			velocidade.x = lerp(velocidade.x, 0, desaceleracao * delta)
+	
+	
+func _process(delta):
+	pegar_posicao_mouse_plano()
+	aparencia_primaria()
+
+func _physics_process(delta):
+	camera_condicao()
+	movimentacao(delta)
+	para_saltar(delta)
+	aplicando_gravidade(delta)
